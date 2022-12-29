@@ -1,0 +1,132 @@
+﻿using ASPNETCORECRUD.Data;
+using ASPNETCORECRUD.Models;
+using ASPNETCORECRUD.Models.Domain;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace ASPNETCORECRUD.Controllers
+{
+    public class EmployeesController : Controller
+    {
+        private readonly MVCDbContext mvcDbContext;
+
+        //constructor
+        public EmployeesController(MVCDbContext mvcDbContext)
+        {
+            this.mvcDbContext = mvcDbContext;
+        }
+
+        //Display Employee Details
+        [HttpGet]
+        public async Task<IActionResult> Index()
+        {
+            var employees = await mvcDbContext.Employees.ToListAsync();
+            return View(employees);
+        }
+
+        //Retrieve All details related to ID
+        [HttpGet]
+        public async Task<IActionResult> View(int ID)
+        {
+            var employee = await mvcDbContext.Employees.FirstOrDefaultAsync(x => x.ID == ID);
+
+            if(employee != null)
+            {
+                var viewModel = new UpdateEmployeeViewModel()
+                {
+                    ID = employee.ID,
+                    Name = employee.Name,
+                    Email = employee.Email,
+                    Salary = employee.Salary,
+                    DateofBirth = employee.DateofBirth,
+                    Department = employee.Department,
+                };
+
+                return await Task.Run(() => View("View", viewModel));
+            }        
+
+            return RedirectToAction("Index");
+        }
+		
+        #region Add
+        [HttpGet]
+        public IActionResult Add()
+        {
+            return View();
+        }
+
+        //Save the submitted details to db
+        [HttpPost]
+        public async Task<IActionResult> Add(AddEmployeeViewModel addEmployeeRequest)
+        {
+            var employee = new Employee()
+            {
+                //ID = Guid.NewGuid(),
+                Name = addEmployeeRequest.Name,
+                Email = addEmployeeRequest.Email,
+                Salary = addEmployeeRequest.Salary,
+                DateofBirth = addEmployeeRequest.DateofBirth,
+                Department = addEmployeeRequest.Department,
+            };
+
+            await mvcDbContext.Employees.AddAsync(employee);
+
+            //Save the Details to database
+            await mvcDbContext.SaveChangesAsync();
+
+            //for now
+            return RedirectToAction("Index");
+        }
+        #endregion
+
+        #region Update
+        //Update Employee Details
+        [HttpPost]
+        public async Task<IActionResult> View(UpdateEmployeeViewModel model)
+        {
+            var employee = await mvcDbContext.Employees.FindAsync(model.ID);
+            if (employee != null)
+            {
+                employee.Name = model.Name;
+                employee.Email = model.Email;
+                employee.Salary = model.Salary;
+                employee.DateofBirth = model.DateofBirth;
+                employee.Department = model.Department;
+
+                //Save Updated Details
+                await mvcDbContext.SaveChangesAsync();
+
+                //redirect to Index page
+                return RedirectToAction("Index");
+            }
+
+            return RedirectToAction("Index");
+        } 
+        #endregion
+
+        #region Delete
+
+        //Delete Employees
+        [HttpPost]
+        public async Task<IActionResult> Delete(UpdateEmployeeViewModel model)
+        {
+            var employee = await mvcDbContext.Employees.FindAsync(model.ID);
+
+            if (employee != null)
+            {
+                mvcDbContext.Employees.Remove(employee);
+                await mvcDbContext.SaveChangesAsync();
+
+                return RedirectToAction("Index");
+            }
+
+            return RedirectToAction("Index");
+        } 
+        #endregion
+
+    }
+}
